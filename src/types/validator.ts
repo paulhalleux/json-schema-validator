@@ -1,5 +1,6 @@
 import type { JSONSchema, JSONSchemaTypeName } from "./schema.ts";
 import type { Validator } from "../core/Validator.ts";
+import type * as t from "@babel/types";
 
 export type ValidationError = {
   /**
@@ -30,7 +31,7 @@ export type ValidationError = {
   /**
    * The schema object that contains the keyword definition.
    */
-  params?: Record<string, any>;
+  params: Record<string, any>;
 };
 
 export type KeywordValidator = {
@@ -50,18 +51,35 @@ export type KeywordValidator = {
   /**
    * The function that validates the keyword against the schema and data.
    *
-   * @param schema - The schema object containing the keyword definition.
-   * @param data - The data to validate against the schema.
-   * @param parentSchema - The parent schema, if applicable.
-   * @param dataPath - The path to the data being validated, used for error messages.
-   * @returns A boolean indicating whether the data is valid according to the keyword.
+   * @param schemaValue - The value of the keyword in the schema.
+   * @param data - The data at the path being validated.
+   * @param context - The validation context containing paths and the validator instance.
+   * @returns A boolean indicating whether the data is valid, according to the keyword.
    */
-  validate(
-    schema: any,
+  validate?(
+    schemaValue: unknown,
     data: any,
-    parentSchema?: any,
-    dataPath?: string,
+    context?: ValidationContext,
   ): ValidationError[] | boolean;
+
+  /**
+   * The function that generates the validation code for this keyword.
+   * This is used to compile the schema into a validation function.
+   *
+   * @param schemaValue - The value of the keyword in the schema.
+   * @param schemaPath - The path to the schema that defines the keyword.
+   * @param context - The context in which the code is being generated.
+   * @returns An array of Babel statements that implement the validation logic.
+   */
+  code?(
+    schemaValue: unknown,
+    schemaPath: string,
+    context: CodeContext,
+  ): t.Statement[] | t.Statement;
+};
+
+export type CodeContext = {
+  fail(params: Record<string, any>): t.Statement;
 };
 
 export type ValidationContext = {
@@ -98,4 +116,7 @@ export type ValidationResult = {
   data?: any;
 };
 
-export type ValidationFn = (data: any) => ValidationResult;
+export interface ValidationFn {
+  (data: any): ValidationResult;
+  code: string;
+}

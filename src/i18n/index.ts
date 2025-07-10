@@ -1,6 +1,6 @@
-import type { I18nMessages } from "../types/i18n.ts";
+import type { I18nMessages } from "../types";
 import { en } from "./en.ts";
-import { get } from "../utils/get.ts";
+import get from "lodash-es/get";
 
 export const locales = {
   en,

@@ -12,6 +12,8 @@ import { type Draft, DraftVersion, getDraft } from "./draft/Draft.ts";
 import { RefResolver } from "./RefResolver.ts";
 import { KeywordRegistry } from "./keyword/KeywordRegistry.ts";
 import { FormatRegistry } from "./format/FormatRegistry.ts";
+import { Compiler } from "./compiler/Compiler.ts";
+import { ExecutionContext } from "./ExecutionContext.ts";
 
 export type DefaultedValidatorOptions = ReturnType<
   typeof getOptionsWithDefaults
@@ -94,13 +96,16 @@ export class Validator {
   private readonly _refResolver: RefResolver;
   private readonly _keywordRegistry: KeywordRegistry;
   private readonly _formatRegistry: FormatRegistry;
+  private readonly _compiler: Compiler;
 
   constructor(options: ValidatorOptions = {}) {
     this._options = getOptionsWithDefaults(options);
+    this._draft = getDraft(this._options.draftVersion, this);
+
     this._refResolver = new RefResolver(this._options.refResolver);
     this._keywordRegistry = new KeywordRegistry();
     this._formatRegistry = new FormatRegistry();
-    this._draft = getDraft(this._options.draftVersion, this);
+    this._compiler = new Compiler(this);
 
     this.loadDraftKeywords();
   }
@@ -142,15 +147,7 @@ export class Validator {
    * @return A function that validates data against the schema.
    */
   compile(schema: JSONSchemaDefinition): ValidationFn {
-    if (typeof schema === "boolean") {
-      return () => ({ valid: schema });
-    }
-
-    const normalizedSchema = this._options.normalizeSchema
-      ? this._options.normalizeSchema(schema)
-      : schema;
-
-    return () => ({ valid: true });
+    return this._compiler.compile(schema);
   }
 
   /**
@@ -200,6 +197,16 @@ export class Validator {
   }
 
   /**
+   * Creates a new ExecutionContext for this validator instance.
+   * The ExecutionContext is used to manage the validation process and store errors.
+   *
+   * @return A new ExecutionContext instance.
+   */
+  createExecutionContext(schema: JSONSchema): ExecutionContext {
+    return new ExecutionContext(schema, this);
+  }
+
+  /**
    * Registers the keywords supported by the draft version.
    * This method loads the keywords from the draft and registers them in the keyword registry.
    */
@@ -211,7 +218,7 @@ export class Validator {
         if (!this._options.enabledKeywords.includes(keyword.keyword)) {
           continue;
         }
-      } else if (this._options.disabledKeywords.includes(keyword.keyword)) {
+      } else if (this._options.disabledKeywords?.includes(keyword.keyword)) {
         continue;
       }
 
@@ -235,8 +242,8 @@ function getOptionsWithDefaults(options: ValidatorOptions = {}) {
     coerceTypes: options.coerceTypes || false,
     customCoercion: options.customCoercion,
     refResolver: options.refResolver,
-    disabledKeywords: options.disabledKeywords || [],
-    enabledKeywords: options.enabledKeywords || [],
+    disabledKeywords: options.disabledKeywords,
+    enabledKeywords: options.enabledKeywords,
     formatErrorMessages: options.formatErrorMessages,
     circularRefPolicy: options.circularRefPolicy || "throw",
   };
