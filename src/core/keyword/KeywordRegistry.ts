@@ -1,4 +1,4 @@
-import type { KeywordValidator } from "../types";
+import type { KeywordValidator } from "../../types";
 
 export class KeywordRegistry {
   private readonly keywords: Map<string, KeywordValidator> = new Map();
@@ -38,5 +38,19 @@ export class KeywordRegistry {
    */
   getByType(type: string): KeywordValidator[] {
     return this.keywordByType.get(type) || [];
+  }
+
+  /**
+   * Removes a keyword validator by its name.
+   * @param keyword - The name of the keyword to remove.
+   */
+  remove(keyword: string): void {
+    this.keywords.delete(keyword);
+    this.keywordByType.forEach((validators, type) => {
+      this.keywordByType.set(
+        type,
+        validators.filter((v) => v.keyword !== keyword),
+      );
+    });
   }
 }

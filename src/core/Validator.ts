@@ -10,7 +10,8 @@ import type {
 import type { Locale } from "../i18n";
 import { type Draft, DraftVersion, getDraft } from "./draft/Draft.ts";
 import { RefResolver } from "./RefResolver.ts";
-import { KeywordRegistry } from "./KeywordRegistry.ts";
+import { KeywordRegistry } from "./keyword/KeywordRegistry.ts";
+import { FormatRegistry } from "./format/FormatRegistry.ts";
 
 export type DefaultedValidatorOptions = ReturnType<
   typeof getOptionsWithDefaults
@@ -92,11 +93,13 @@ export class Validator {
   private readonly _options: DefaultedValidatorOptions;
   private readonly _refResolver: RefResolver;
   private readonly _keywordRegistry: KeywordRegistry;
+  private readonly _formatRegistry: FormatRegistry;
 
   constructor(options: ValidatorOptions = {}) {
     this._options = getOptionsWithDefaults(options);
     this._refResolver = new RefResolver(this._options.refResolver);
     this._keywordRegistry = new KeywordRegistry();
+    this._formatRegistry = new FormatRegistry();
     this._draft = getDraft(this._options.draftVersion, this);
 
     this.loadDraftKeywords();
@@ -110,6 +113,26 @@ export class Validator {
    */
   get options(): DefaultedValidatorOptions {
     return this._options;
+  }
+
+  /**
+   * Gets the format registry used by this validator instance.
+   * The format registry contains all registered formats and their validation functions.
+   *
+   * @return The format registry instance.
+   */
+  get formatRegistry(): FormatRegistry {
+    return this._formatRegistry;
+  }
+
+  /**
+   * Gets the keyword registry used by this validator instance.
+   * The keyword registry contains all registered keywords and their validation functions.
+   *
+   * @return The keyword registry instance.
+   */
+  get keywordRegistry(): KeywordRegistry {
+    return this._keywordRegistry;
   }
 
   /**
