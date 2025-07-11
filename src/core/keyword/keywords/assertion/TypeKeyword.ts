@@ -1,32 +1,15 @@
-import type { KeywordValidator } from "../../../../types";
+import type { CodeContext, KeywordValidator } from "../../../../types";
 import * as t from "@babel/types";
+import {
+  createChainedLogicalExpression,
+  createTypeofCheck,
+} from "../../../../utils/codegen.ts";
 
 const createArrayTypeCheck = () => {
   return t.callExpression(
     t.memberExpression(t.identifier("Array"), t.identifier("isArray")),
     [t.identifier("data")],
   );
-};
-
-const createTypeofCheck = (type: string) => {
-  return t.binaryExpression(
-    "!==",
-    t.unaryExpression("typeof", t.identifier("data")),
-    t.stringLiteral(type),
-  );
-};
-
-const createChainedLogicalExpression = (
-  operator: "&&" | "||",
-  expressions: t.Expression[],
-) => {
-  if (expressions.length === 0) {
-    return t.booleanLiteral(true);
-  }
-
-  return expressions.slice(1).reduce<t.Expression>((acc, curr) => {
-    return t.logicalExpression(operator, acc, curr);
-  }, expressions[0]!);
 };
 
 const createTypeCheck = (type: string) => {
@@ -50,28 +33,46 @@ const createTypeCheck = (type: string) => {
 
   if (type === "object") {
     return createChainedLogicalExpression("||", [
-      createTypeofCheck("object"),
+      createTypeofCheck("data", "!==", "object"),
       createArrayTypeCheck(),
       t.binaryExpression("===", t.identifier("data"), t.nullLiteral()),
     ]);
   }
 
-  return createTypeofCheck(type);
+  return createTypeofCheck("data", "!==", type);
 };
 
-const createOrTypeCheck = (types: string[]) => {
-  const typesChecks = types.map(createTypeCheck);
-  return typesChecks.slice(1).reduce<t.Expression>((acc, curr) => {
-    return t.logicalExpression("&&", acc, curr);
-  }, typesChecks[0]!);
+const createAlternativeTypeCheck = (
+  type: string,
+  ctx: CodeContext,
+): t.Statement[] => {
+  // if the type is correct, we need to validate keywords that apply to it
+  const validKeywords = ctx.validator.keywordRegistry.getByType(type);
+  const statements: t.Statement[] = [];
+
+  for (const keyword of validKeywords) {
+    if (!keyword.code || !(keyword.keyword in ctx.schema)) {
+      continue;
+    }
+
+    const result = keyword.code(ctx.schema[keyword.keyword], ctx);
+    if (Array.isArray(result)) {
+      statements.push(...result);
+    } else {
+      statements.push(result);
+    }
+  }
+
+  return statements;
 };
 
 export const TypeKeyword: KeywordValidator = {
   keyword: "type",
-  code(schemaValue, _, ctx) {
+  code(schemaValue, ctx) {
     if (Array.isArray(schemaValue)) {
+      const typesChecks = schemaValue.map(createTypeCheck);
       return t.ifStatement(
-        createOrTypeCheck(schemaValue),
+        createChainedLogicalExpression("&&", typesChecks),
         ctx.fail({ type: schemaValue }),
       );
     }
@@ -84,6 +85,7 @@ export const TypeKeyword: KeywordValidator = {
     return t.ifStatement(
       createTypeCheck(schemaValue),
       ctx.fail({ type: schemaValue }),
+      t.blockStatement(createAlternativeTypeCheck(schemaValue, ctx)),
     );
   },
 };

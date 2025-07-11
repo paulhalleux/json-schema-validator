@@ -9,6 +9,9 @@ import { getTranslatedErrorMessage } from "../i18n";
 import get from "lodash-es/get";
 
 export class ExecutionContext {
+  private _isScoped = false;
+  private _scopedErrors: ValidationError[] = [];
+
   private readonly _errors: ValidationError[] = [];
   private readonly _refStack: Set<string> = new Set();
 
@@ -23,6 +26,15 @@ export class ExecutionContext {
    */
   get refStack(): Set<string> {
     return this._refStack;
+  }
+
+  /**
+   * Get the errors collected during validation.
+   * This property is used to access validation errors after validation.
+   */
+  get valid(): boolean {
+    const target = this._isScoped ? this._scopedErrors : this._errors;
+    return target.length === 0;
   }
 
   /**
@@ -61,7 +73,9 @@ export class ExecutionContext {
     };
 
     error.message = this.validator.formatErrorMessage(error, context);
-    this._errors.push(error);
+
+    const target = this._isScoped ? this._scopedErrors : this._errors;
+    target.push(error);
   }
 
   /**
@@ -69,7 +83,24 @@ export class ExecutionContext {
    * This method is used to merge errors from multiple validation steps.
    */
   addErrors(errors: ValidationError[]): void {
-    this._errors.push(...errors);
+    const target = this._isScoped ? this._scopedErrors : this._errors;
+    target.push(...errors);
+  }
+
+  createScope() {
+    if (this._isScoped) {
+      throw new Error("Execution context is already scoped.");
+    }
+    this._isScoped = true;
+    this._scopedErrors = [];
+  }
+
+  closeScope() {
+    if (!this._isScoped) {
+      throw new Error("Execution context is not scoped.");
+    }
+    this._isScoped = false;
+    this._scopedErrors = [];
   }
 
   toValidationResult(): ValidationResult {

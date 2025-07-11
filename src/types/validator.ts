@@ -1,6 +1,7 @@
 import type { JSONSchema, JSONSchemaTypeName } from "./schema.ts";
 import type { Validator } from "../core/Validator.ts";
 import type * as t from "@babel/types";
+import type { Compiler } from "../core/compiler/Compiler.ts";
 
 export type ValidationError = {
   /**
@@ -67,18 +68,20 @@ export type KeywordValidator = {
    * This is used to compile the schema into a validation function.
    *
    * @param schemaValue - The value of the keyword in the schema.
-   * @param schemaPath - The path to the schema that defines the keyword.
    * @param context - The context in which the code is being generated.
    * @returns An array of Babel statements that implement the validation logic.
    */
   code?(
     schemaValue: unknown,
-    schemaPath: string,
     context: CodeContext,
   ): t.Statement[] | t.Statement;
 };
 
 export type CodeContext = {
+  schema: JSONSchema;
+  schemaPath: string;
+  validator: Validator;
+  compiler: Compiler;
   fail(params: Record<string, any>): t.Statement;
 };
 
