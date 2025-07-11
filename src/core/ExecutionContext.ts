@@ -4,7 +4,6 @@ import type {
   ValidationError,
   ValidationResult,
 } from "../types";
-import set from "lodash-es/set";
 import type { Validator } from "./Validator.ts";
 import { getTranslatedErrorMessage } from "../i18n";
 import get from "lodash-es/get";

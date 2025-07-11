@@ -5,7 +5,8 @@ export type JSONSchemaTypeName =
   | "array"
   | "number"
   | "string"
-  | "integer";
+  | "integer"
+  | (string & {});
 
 export type JSONSchemaType = JSONSchemaTypeName | JSONSchemaTypeName[];
 
@@ -42,7 +43,7 @@ export interface JSONSchema {
   // Arrays
   items?: JSONSchemaDefinition | JSONSchemaDefinition[];
   additionalItems?: JSONSchemaDefinition; // Legacy; 2020-12 replaces this with `prefixItems`
-  prefixItems?: JSONSchemaDefinition[];   // New in 2020-12
+  prefixItems?: JSONSchemaDefinition[]; // New in 2020-12
   contains?: JSONSchemaDefinition;
   minItems?: number;
   maxItems?: number;
