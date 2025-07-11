@@ -8,6 +8,8 @@ import {
   MinLengthKeyword,
   MaxLengthKeyword,
   TypeKeyword,
+  MinimumKeyword,
+  MaximumKeyword,
 } from "../keyword";
 
 export class Draft202012 implements Draft {
@@ -20,6 +22,8 @@ export class Draft202012 implements Draft {
       TypeKeyword,
       MinLengthKeyword,
       MaxLengthKeyword,
+      MinimumKeyword,
+      MaximumKeyword,
       AllOfKeyword,
       OneOfKeyword,
       AnyOfKeyword,

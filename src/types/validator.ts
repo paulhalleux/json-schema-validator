@@ -71,10 +71,7 @@ export type KeywordValidator = {
    * @param context - The context in which the code is being generated.
    * @returns An array of Babel statements that implement the validation logic.
    */
-  code?(
-    schemaValue: unknown,
-    context: CodeContext,
-  ): t.Statement[] | t.Statement;
+  code?(schemaValue: unknown, context: CodeContext): t.Statement;
 };
 
 export type CodeContext = {
