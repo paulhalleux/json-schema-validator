@@ -58,6 +58,12 @@ export interface CompilationContext {
   dataIdentifier: t.Identifier;
 
   /**
+   * An identifier for the execution context.
+   * This is used to access the execution context in the generated validation function.
+   */
+  executionContextIdentifier: t.Identifier;
+
+  /**
    * The schema compiler instance that is used to compile the schema.
    * It can be used to compile sub-schemas or to access the validator.
    */
@@ -143,22 +149,25 @@ export class Compiler {
     type: string | undefined,
   ): Promise<t.Statement[]> {
     const refStack = new Set<string>();
-    const compilationContext = this.createCompilationContext(
-      refStack,
-      "keyword",
-      undefined,
-      schemaPath,
-      dataPath,
-      schema,
-      options,
-    );
-
     if (typeof schema === "boolean") {
+      const compilationContext = this.createCompilationContext(
+        refStack,
+        "boolean",
+        undefined,
+        schemaPath,
+        dataPath,
+        schema,
+        options,
+      );
+
       return this.compileBooleanSchema(compilationContext);
     } else {
       return await this.compileKeywordSchema(
-        compilationContext,
-        "default",
+        refStack,
+        schema,
+        options,
+        schemaPath,
+        dataPath,
         type,
       );
     }
@@ -168,27 +177,41 @@ export class Compiler {
    * Compiles a keyword schema into validation statements.
    * This method generates statements based on the specific keyword and its associated schema.
    *
-   * @param compilationContext - The context containing the reference stack, root schema, and options.
-   * @param keyword - The keyword associated with the schema being compiled.
+   * @param refStack - A set of references to track during compilation.
+   * @param schema - The JSON Schema to compile, which should be an object.
+   * @param options - Compilation options, such as whether to compile asynchronously.
+   * @param schemaPath - The path to the schema being compiled, used for error reporting.
+   * @param dataPath - The path to the data being validated, used for error reporting.
    * @param type - The type of schema being compiled, if applicable (e.g., "string", "number").
    * @return An array of Babel statements representing the compiled keyword schema.
    */
   private async compileKeywordSchema(
-    compilationContext: CompilationContext,
-    keyword: string,
+    refStack: Set<string>,
+    schema: JSONSchemaDefinition,
+    options: CompileOptions = {},
+    schemaPath: string = "#/",
+    dataPath: string = "",
     type: string | undefined,
   ) {
-    if (typeof compilationContext.rootSchema !== "object") {
+    if (typeof schema !== "object") {
       throw new Error(
-        `Invalid schema to compile for keyword "${keyword}": expected an object, but received ${typeof compilationContext.rootSchema}.`,
+        `Invalid schema to compile: expected an object, but received ${typeof schema}.`,
       );
     }
 
     const statements: t.Statement[] = [];
 
-    for (let [keyword, subSchema] of Object.entries(
-      compilationContext.rootSchema,
-    )) {
+    for (let [keyword, subSchema] of Object.entries(schema)) {
+      const compilationContext = this.createCompilationContext(
+        refStack,
+        "keyword",
+        keyword,
+        schemaPath,
+        dataPath,
+        schema,
+        options,
+      );
+
       const keywordValidator =
         this._validator.keywordRegistry.getKeyword(keyword);
 
@@ -225,7 +248,9 @@ export class Compiler {
       }
 
       if (t.isStatement(compiledStatement)) {
-        statements.push(compiledStatement);
+        if (t.isBlockStatement(compiledStatement)) {
+          statements.push(...compiledStatement.body);
+        } else statements.push(compiledStatement);
       } else {
         throw new Error(
           `Invalid code generated for keyword "${keyword}": expected a Babel statement, but received ${typeof compiledStatement}.`,
@@ -289,6 +314,7 @@ export class Compiler {
       schemaPath,
       dataPath,
       dataIdentifier: DATA_IDENTIFIER,
+      executionContextIdentifier: EXECUTION_CONTEXT_IDENTIFIER,
       compiler: this,
       fail: (params) => {
         return createFailCall(

@@ -9,42 +9,49 @@ import { getTranslatedErrorMessage } from "../i18n";
 
 export class ExecutionContext {
   private readonly _errors: ValidationError[] = [];
-
-  private _isScoped: boolean;
   private _scope: ExecutionContext | null = null;
 
   constructor(
     private readonly validator: Validator,
     private readonly schema: JSONSchemaDefinition,
-  ) {
-    this._isScoped = false;
-  }
+  ) {}
 
   /**
-   * Executes a callback function in a scoped context.
-   * This allows for temporary changes to the execution context, such as enabling or disabling the error collection,
-   * without affecting the global state of the validator.
-   * @param path - The path to the schema that defines the scope.
+   * Executes a callback function in the context of a specific schema path.
+   * This allows for validation against a sub-schema defined at the given path.
+   * @param path - The path to the sub-schema, using JSON Pointer syntax.
    * @param callback - The callback function to execute within the scoped context.
+   * @return A ValidationResult object containing the validity status and any errors.
    */
-  runScoped(path: string, callback: () => void): ValidationResult {
+  runScopedSubSchema(path: string, callback: () => void): ValidationResult {
     const schema = this.getSubSchema(path);
     if (!schema) {
       throw new Error(`Schema not found at path: ${path}`);
     }
 
     const context = new ExecutionContext(this.validator, schema);
-    context._isScoped = true;
-
-    if (this._isScoped) {
-      throw new Error(
-        "Cannot create a scoped context within another scoped context.",
-      );
-    }
 
     callback();
     const result = context.toResult();
     this._scope = null;
+
+    return result;
+  }
+
+  /**
+   * Executes a callback function in a scoped context.
+   * This allows for temporary changes to the execution context, such as enabling or disabling the error collection,
+   * without affecting the global state of the validator.
+   * @param callback - The callback function to execute within the scoped context.
+   */
+  runScoped(callback: () => void): ValidationResult {
+    const previousScope = this._scope;
+    this._scope = new ExecutionContext(this.validator, this.schema);
+
+    callback();
+
+    const result = this._scope.toResult();
+    this._scope = previousScope;
 
     return result;
   }

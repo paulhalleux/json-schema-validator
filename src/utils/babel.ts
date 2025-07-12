@@ -171,7 +171,40 @@ export function createFailCall(
  *
  * This function generates this code:
  * ```
- * const scopeResult = executionContext.runScoped(schemaPath, () => {
+ * const scopeResult = executionContext.runScoped(() => {
+ *   // callback logic
+ * });
+ * ```
+ *
+ * @param scopeResultIdentifier - The identifier for the scoped result variable.
+ * @param executionContextIdentifier - The identifier for the execution context.
+ * @param callback - The block statement that contains the logic to execute within the scoped context.
+ */
+export function createScopedExecution(
+  scopeResultIdentifier: t.Identifier,
+  executionContextIdentifier: t.Identifier,
+  callback: t.BlockStatement,
+): t.VariableDeclaration {
+  return t.variableDeclaration("const", [
+    t.variableDeclarator(
+      scopeResultIdentifier,
+      t.callExpression(
+        t.memberExpression(
+          executionContextIdentifier,
+          t.identifier("runScoped"),
+        ),
+        [t.arrowFunctionExpression([], callback)],
+      ),
+    ),
+  ]);
+}
+
+/**
+ * Creates a scoped execution statement with a schema path for the execution context.
+ *
+ * This function generates this code:
+ * ```
+ * const scopeResult = executionContext.runScopedWithSchema(schemaPath, () => {
  *   // callback logic
  * });
  * ```
@@ -181,7 +214,7 @@ export function createFailCall(
  * @param schemaPathIdentifier - The identifier for the schema path.
  * @param callback - The block statement that contains the logic to execute within the scoped context.
  */
-export function createScopedExecution(
+export function createScopedExecutionSubSchema(
   scopeResultIdentifier: t.Identifier,
   executionContextIdentifier: t.Identifier,
   schemaPathIdentifier: t.Identifier,
@@ -193,7 +226,7 @@ export function createScopedExecution(
       t.callExpression(
         t.memberExpression(
           executionContextIdentifier,
-          t.identifier("runScoped"),
+          t.identifier("runScopedSubSchema"),
         ),
         [schemaPathIdentifier, t.arrowFunctionExpression([], callback)],
       ),
