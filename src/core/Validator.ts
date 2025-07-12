@@ -1,4 +1,5 @@
 import type {
+  JSONSchema,
   JSONSchemaDefinition,
   ValidationError,
   ValidationFn,
@@ -11,6 +12,7 @@ import { Compiler, type CompilationContext } from "./Compiler.ts";
 import { KeywordRegistry } from "./KeywordRegistry.ts";
 import { FormatRegistry } from "./FormatRegistry.ts";
 import { RefResolver } from "./RefResolver.ts";
+import { ExecutionContext } from "./ExecutionContext.ts";
 
 /**
  * The Validator class is responsible for validating JSON Schemas against a specified draft version.
@@ -45,8 +47,29 @@ export class Validator {
     return this._formatRegistry;
   }
 
-  compile(schema: JSONSchemaDefinition): ValidationFn {
-    throw new Error("Not implemented: compile method in Validator class");
+  /**
+   * Compiles a JSON Schema into a validation function.
+   * This method won't allow asynchronous reference resolution.
+   * @param schema - The JSON Schema to compile.
+   * @return A synchronous validation function that can be used to validate data against the schema.
+   */
+  compileSync(schema: JSONSchemaDefinition): ValidationFn {
+    return this._compiler.compile(schema, { async: false });
+  }
+
+  /**
+   * Compiles a JSON Schema into a validation function asynchronously.
+   * This method allows for asynchronous reference resolution.
+   *
+   * @param schema - The JSON Schema to compile.
+   * @return A promise that resolves to a synchronous validation function that can be used to validate data against the schema.
+   */
+  compileAsync(schema: JSONSchemaDefinition): Promise<ValidationFn> {
+    const result = this._compiler.compile(schema, { async: true });
+    if (result instanceof Promise) {
+      return result;
+    }
+    return Promise.resolve(result);
   }
 
   /**
@@ -63,6 +86,10 @@ export class Validator {
     | Promise<JSONSchemaDefinition | undefined>
     | JSONSchemaDefinition
     | undefined {
+    if (typeof compilationContext.rootSchema !== "object") {
+      throw new Error("Root schema must be an object to resolve references.");
+    }
+
     const stack = compilationContext.refStack;
     if (stack.has(ref)) {
       if (this.options.circularRefPolicy === "throw") {
@@ -89,6 +116,17 @@ export class Validator {
       return this.options.formatErrorMessages(error);
     }
     return error.message;
+  }
+
+  /**
+   * Creates an execution context for validating a schema.
+   * This context is used to manage the validation process, including error collection and reference resolution.
+   *
+   * @param schema - The JSON Schema to validate against.
+   * @return An ExecutionContext instance that can be used to validate data against the schema.
+   */
+  createExecutionContext(schema: JSONSchemaDefinition) {
+    return new ExecutionContext(this, schema);
   }
 }
 

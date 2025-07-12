@@ -1,4 +1,8 @@
-import type { JSONSchema, JSONSchemaTypeName } from "./schema.ts";
+import type {
+  JSONSchema,
+  JSONSchemaDefinition,
+  JSONSchemaTypeName,
+} from "./schema.ts";
 import type { Validator } from "../core/Validator.ts";
 import type { Compiler } from "../core/Compiler.ts";
 import type { RefResolverFn } from "./ref.ts";
@@ -46,7 +50,7 @@ export type ValidationError = {
    * - { "type": "string" }
    * - { "minLength": 3 }
    */
-  parentSchema: JSONSchema;
+  parentSchema: JSONSchemaDefinition;
 
   /**
    * The value of the keyword in the schema.
@@ -131,6 +135,11 @@ export type ValidationResult = {
  */
 export interface ValidationFn {
   (data: any): ValidationResult;
+  code: string;
+}
+
+export interface ValidationFnFactory {
+  (validator: Validator, schema: JSONSchemaDefinition): ValidationFn;
   code: string;
 }
 
