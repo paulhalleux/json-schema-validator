@@ -1,8 +1,10 @@
 import { Validator } from "./core/Validator.ts";
 
 const validator = new Validator({});
-const validate = validator.compileSync({
-  oneOf: [{ type: "string" }, { type: "number" }, { minLength: 3 }],
+const validate = await validator.compile({
+  type: ["object", "number"],
+  minimum: 10,
+  maximum: 20,
 });
 
 console.log(validate.code);

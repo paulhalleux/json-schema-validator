@@ -15,7 +15,7 @@ export type ValidationError = {
   /**
    * The keyword that failed validation.
    */
-  keyword: string;
+  keyword: string | undefined;
 
   /**
    * The error message describing the validation failure.
@@ -69,52 +69,6 @@ export type ValidationError = {
    * - { "enum": ["value1", "value2"] }
    */
   params: Record<string, any>;
-};
-
-export type GenerateContext = {
-  /**
-   * The identifier for the data being validated.
-   */
-  dataIdentifier: t.Identifier;
-
-  /**
-   * The schema object being validated.
-   */
-  schema: JSONSchema;
-
-  /**
-   * The path to the schema that defines the keyword.
-   */
-  schemaPath: string;
-
-  /**
-   * The root schema object.
-   */
-  rootSchema: JSONSchema;
-
-  /**
-   * The path to the data being validated.
-   */
-  dataPath: string;
-
-  /**
-   * The path to the validator instance.
-   */
-  validator: Validator;
-
-  /**
-   * The compiler instance used to generate the validation code.
-   */
-  compiler: Compiler;
-
-  /**
-   * A function to generate a failure statement for the validation.
-   * This is used to create a statement that indicates a validation failure.
-   *
-   * @param params - The parameters for the failure statement.
-   * @returns A Babel statement that represents the failure.
-   */
-  fail(params: Record<string, any>): t.Statement;
 };
 
 /**

@@ -43,6 +43,7 @@ return executionContext.toResult();
   });
 
   test("createValidationFunctionFactory", () => {
+    const executionContextIdentifier = t.identifier("executionContext");
     const factoryIdentifier = t.identifier("createValidationFunction");
     const validatorIdentifier = t.identifier("validator");
     const schemaIdentifier = t.identifier("schema");
@@ -59,6 +60,7 @@ return executionContext.toResult();
 
     const result = createValidationFunctionFactory(
       factoryIdentifier,
+      executionContextIdentifier,
       validatorIdentifier,
       schemaIdentifier,
       dataIdentifier,

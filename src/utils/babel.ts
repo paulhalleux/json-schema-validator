@@ -122,3 +122,116 @@ export function createFactoryFunction(
     { code: code },
   );
 }
+
+/**
+ * Creates a failure call statement for the execution context.
+ *
+ * This function generates this code:
+ * ```
+ * executionContext.report({
+ *   keyword: keyword,
+ *   params: params,
+ *   dataPath: dataPath,
+ *   schemaPath: schemaPath,
+ *   data: dataIdentifier,
+ * });
+ * ```
+ *
+ * @param executionContextIdentifier - The identifier for the execution context.
+ * @param dataIdentifier - The identifier for the data being validated.
+ * @param keyword - The keyword that caused the validation failure.
+ * @param dataPath - The path to the data that caused the validation failure.
+ * @param schemaPath - The path to the schema that defines the keyword.
+ * @param params - The parameters associated with the validation failure.
+ */
+export function createFailCall(
+  executionContextIdentifier: t.Identifier,
+  dataIdentifier: t.Identifier,
+  keyword: string,
+  dataPath: string,
+  schemaPath: string,
+  params: Record<string, any>,
+) {
+  return t.expressionStatement(
+    t.callExpression(
+      t.memberExpression(executionContextIdentifier, t.identifier("report")),
+      [
+        t.objectExpression([
+          t.objectProperty(t.identifier("keyword"), t.stringLiteral(keyword)),
+          t.objectProperty(t.identifier("params"), t.valueToNode(params)),
+          t.objectProperty(t.identifier("dataPath"), t.stringLiteral(dataPath)),
+          t.objectProperty(
+            t.identifier("schemaPath"),
+            t.stringLiteral(schemaPath),
+          ),
+          t.objectProperty(t.identifier("data"), dataIdentifier),
+        ]),
+      ],
+    ),
+  );
+}
+
+/**
+ * Creates a scoped execution statement for the execution context.
+ *
+ * This function generates this code:
+ * ```
+ * const scopeResult = executionContext.runScoped(schemaPath, () => {
+ *   // callback logic
+ * });
+ * ```
+ *
+ * @param scopeResultIdentifier - The identifier for the scoped result variable.
+ * @param executionContextIdentifier - The identifier for the execution context.
+ * @param schemaPathIdentifier - The identifier for the schema path.
+ * @param callback - The block statement that contains the logic to execute within the scoped context.
+ */
+export function createScopedExecution(
+  scopeResultIdentifier: t.Identifier,
+  executionContextIdentifier: t.Identifier,
+  schemaPathIdentifier: t.Identifier,
+  callback: t.BlockStatement,
+): t.VariableDeclaration {
+  return t.variableDeclaration("const", [
+    t.variableDeclarator(
+      scopeResultIdentifier,
+      t.callExpression(
+        t.memberExpression(
+          executionContextIdentifier,
+          t.identifier("runScoped"),
+        ),
+        [schemaPathIdentifier, t.arrowFunctionExpression([], callback)],
+      ),
+    ),
+  ]);
+}
+
+/**
+ * Creates a chained logical expression from an array of expressions.
+ *
+ * This function generates a logical expression that combines multiple expressions
+ * using the specified operator (&&, ||, ??).
+ *
+ * @param operator - The logical operator to use for combining the expressions.
+ * @param expressions - An array of expressions to combine.
+ * @returns A single logical expression that combines all provided expressions.
+ */
+export function createChainedLogicalExpression(
+  operator: "&&" | "||" | "??",
+  expressions: t.Expression[],
+): t.Expression {
+  if (expressions.length === 0) {
+    throw new Error(
+      "At least one expression is required for a logical expression.",
+    );
+  }
+
+  const first = expressions[0];
+  if (expressions.length === 1 && first) {
+    return first;
+  }
+
+  return expressions.slice(1).reduce((acc, expr) => {
+    return t.logicalExpression(operator, acc, expr);
+  }, first!);
+}

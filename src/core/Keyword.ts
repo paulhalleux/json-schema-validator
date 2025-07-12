@@ -1,5 +1,6 @@
-import type { GenerateContext, JSONSchemaTypeName } from "../types";
+import type { JSONSchemaTypeName } from "../types";
 import type * as t from "@babel/types";
+import type { CompilationContext } from "./Compiler.ts";
 
 /**
  * Represents a validator for a specific JSON Schema keyword.
@@ -23,9 +24,14 @@ export interface KeywordValidator {
    * The function that generates the validation code for this keyword.
    * This is used to compile the schema into a validation function.
    *
+   * Optionally, this function can return a Promise if the code generation is asynchronous.
+   *
    * @param schemaValue - The value of the keyword in the schema.
    * @param context - The context in which the code is being generated.
    * @returns An array of Babel statements that implement the validation logic.
    */
-  code(schemaValue: unknown, context: GenerateContext): t.Statement;
+  code(
+    schemaValue: unknown,
+    context: CompilationContext,
+  ): t.Statement | Promise<t.Statement>;
 }

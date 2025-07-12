@@ -24,10 +24,15 @@ export class ExecutionContext {
    * Executes a callback function in a scoped context.
    * This allows for temporary changes to the execution context, such as enabling or disabling the error collection,
    * without affecting the global state of the validator.
-   * @param schema - The schema to use for the scoped context.
+   * @param path - The path to the schema that defines the scope.
    * @param callback - The callback function to execute within the scoped context.
    */
-  runScoped(schema: JSONSchema, callback: () => void): ValidationResult {
+  runScoped(path: string, callback: () => void): ValidationResult {
+    const schema = this.getSubSchema(path);
+    if (!schema) {
+      throw new Error(`Schema not found at path: ${path}`);
+    }
+
     const context = new ExecutionContext(this.validator, schema);
     context._isScoped = true;
 
@@ -50,7 +55,7 @@ export class ExecutionContext {
    * Otherwise, it is added to the global errors.
    * @param keyword - The keyword that caused the validation error.
    * @param params - The parameters associated with the validation error.
-   * @param dataPath - The path to the data that caused the error.
+   * @param dataPath - The path to the data that caused the validation error.
    * @param schemaPath - The path to the schema that defines the keyword.
    * @param data - The data that caused the validation error.
    */
@@ -72,11 +77,13 @@ export class ExecutionContext {
       data,
       message: getTranslatedErrorMessage(
         this.validator.options.locale || "en",
-        dataPath,
         keyword,
         params,
       ),
     };
+
+    // Overwrite the default message with a user-defined message if available
+    error.message = this.validator.formatErrorMessage(error);
 
     if (this._scope) {
       this._scope._errors.push(error);
@@ -95,5 +102,28 @@ export class ExecutionContext {
       valid: this._errors.length === 0,
       errors: this._errors,
     };
+  }
+
+  /**
+   * Retrieves the schema for a specific path.
+   * This method allows access to the schema definition at a given path,
+   * which can be useful for validation or error reporting.
+   * @param path - The path to the schema, using JSON Pointer syntax.
+   * @return The schema definition at the specified path, or null if not found.
+   */
+  private getSubSchema(path: string): JSONSchemaDefinition | null {
+    const parts = path.split("/");
+    let currentSchema: JSONSchemaDefinition | null = this.schema;
+
+    for (const part of parts) {
+      if (part === "" || part === "#") continue; // Skip root or empty parts
+      if (currentSchema && typeof currentSchema === "object") {
+        currentSchema = (currentSchema as JSONSchema)[part] || null;
+      } else {
+        return null; // Invalid path
+      }
+    }
+
+    return currentSchema;
   }
 }

@@ -3,6 +3,7 @@ import type { JSONSchema, JSONSchemaDefinition, ValidationFn } from "../types";
 import * as t from "@babel/types";
 import {
   createFactoryFunction,
+  createFailCall,
   createValidationFunctionFactory,
 } from "../utils/babel.ts";
 
@@ -31,12 +32,36 @@ export interface CompilationContext {
   options: CompileOptions;
 
   /**
+   * The path to the schema being compiled.
+   * This is used to identify the schema in error messages and validation results.
+   */
+  schemaPath: string;
+
+  /**
+   * The path to the data being validated.
+   * This is used to identify the data in error messages and validation results.
+   */
+  dataPath: string;
+
+  /**
    * A function to generate a failure statement for the validation.
    * This is used to create a statement that indicates a validation failure.
    *
    * @returns A Babel statement that represents the failure.
    */
-  fail: (params: Record<string, string>) => t.Statement;
+  fail(params: Record<string, any>): t.Statement;
+
+  /**
+   * An identifier for the data being validated.
+   * This can be used to reference the data in the generated validation function.
+   */
+  dataIdentifier: t.Identifier;
+
+  /**
+   * The schema compiler instance that is used to compile the schema.
+   * It can be used to compile sub-schemas or to access the validator.
+   */
+  compiler: Compiler;
 }
 
 const EXECUTION_CONTEXT_IDENTIFIER = t.identifier("executionContext");
@@ -56,46 +81,28 @@ export class Compiler {
     this._validator = validator;
   }
 
-  compile(
-    schema: JSONSchemaDefinition,
-    options: { async: true },
-  ): Promise<ValidationFn> | ValidationFn;
-  compile(
-    schema: JSONSchemaDefinition,
-    options?: { async?: false },
-  ): ValidationFn;
-
   /**
    * Compiles a JSON Schema into a validation function.
    * This method does not support asynchronous reference resolution unless specified in the options.
    * @param schema - The JSON Schema to compile.
    * @param options - Compilation options, such as whether to compile asynchronously.
+   * @param schemaPath - The path to the schema being compiled, used for error reporting.
+   * @param dataPath - The path to the data being validated, used for error reporting.
    * @return A synchronous validation function that can be used to validate data against the schema.
    */
-  compile(schema: JSONSchemaDefinition, options: CompileOptions = {}) {
-    const refStack = new Set<string>();
-    const validationStatements: t.Statement[] = [];
-
-    if (typeof schema === "boolean") {
-      const compilationContext = this.createCompilationContext(
-        refStack,
-        "boolean",
-        undefined,
-        schema,
-        options,
-      );
-      validationStatements.push(
-        ...this.compileBooleanSchema(compilationContext),
-      );
-    } else {
-      // const compilationContext = this.createCompilationContext(
-      //   refStack,
-      //   "keyword",
-      //   keyword,
-      //   schema,
-      //   options,
-      // );
-    }
+  async compile(
+    schema: JSONSchemaDefinition,
+    options: CompileOptions = {},
+    schemaPath: string = "#/",
+    dataPath: string = "",
+  ): Promise<ValidationFn> {
+    const validationStatements = await this.createSchemaStatements(
+      schema,
+      options,
+      schemaPath,
+      dataPath,
+      undefined,
+    );
 
     const factoryFunction = createValidationFunctionFactory(
       FACTORY_FUNCTION_IDENTIFIER,
@@ -115,6 +122,118 @@ export class Compiler {
     return Object.assign(validate, {
       code: validatorFactory.code,
     });
+  }
+
+  /**
+   * Creates an array of Babel statements that represent the compiled schema.
+   * This method handles both boolean schemas and keyword schemas.
+   *
+   * @param schema - The JSON Schema to compile.
+   * @param options - Compilation options, such as whether to compile asynchronously.
+   * @param schemaPath - The path to the schema being compiled, used for error reporting.
+   * @param dataPath - The path to the data being validated, used for error reporting.
+   * @param type - The type of schema being compiled, either "string", "number", "boolean", etc.
+   * @return An array of Babel statements representing the compiled schema.
+   */
+  async createSchemaStatements(
+    schema: JSONSchemaDefinition,
+    options: CompileOptions = {},
+    schemaPath: string = "#/",
+    dataPath: string = "",
+    type: string | undefined,
+  ): Promise<t.Statement[]> {
+    const refStack = new Set<string>();
+    const compilationContext = this.createCompilationContext(
+      refStack,
+      "keyword",
+      undefined,
+      schemaPath,
+      dataPath,
+      schema,
+      options,
+    );
+
+    if (typeof schema === "boolean") {
+      return this.compileBooleanSchema(compilationContext);
+    } else {
+      return await this.compileKeywordSchema(
+        compilationContext,
+        "default",
+        type,
+      );
+    }
+  }
+
+  /**
+   * Compiles a keyword schema into validation statements.
+   * This method generates statements based on the specific keyword and its associated schema.
+   *
+   * @param compilationContext - The context containing the reference stack, root schema, and options.
+   * @param keyword - The keyword associated with the schema being compiled.
+   * @param type - The type of schema being compiled, if applicable (e.g., "string", "number").
+   * @return An array of Babel statements representing the compiled keyword schema.
+   */
+  private async compileKeywordSchema(
+    compilationContext: CompilationContext,
+    keyword: string,
+    type: string | undefined,
+  ) {
+    if (typeof compilationContext.rootSchema !== "object") {
+      throw new Error(
+        `Invalid schema to compile for keyword "${keyword}": expected an object, but received ${typeof compilationContext.rootSchema}.`,
+      );
+    }
+
+    const statements: t.Statement[] = [];
+
+    for (let [keyword, subSchema] of Object.entries(
+      compilationContext.rootSchema,
+    )) {
+      const keywordValidator =
+        this._validator.keywordRegistry.getKeyword(keyword);
+
+      if (!keywordValidator) {
+        continue; // Skip if no validator is found for the keyword
+      }
+
+      // Only compile if the keyword is applicable to the current type
+      if (type && !keywordValidator.applicableTypes) {
+        continue;
+      }
+
+      // Only compile global keywords if no type is specified
+      if (!type && keywordValidator.applicableTypes) {
+        continue;
+      }
+
+      // If a type is specified, check if the keyword is applicable to that type
+      if (type && !keywordValidator.applicableTypes?.includes(type)) {
+        continue;
+      }
+
+      const code = keywordValidator.code(subSchema, compilationContext);
+      let compiledStatement: t.Statement;
+      if (code instanceof Promise) {
+        if (!compilationContext.options.async) {
+          throw new Error(
+            `Keyword "${keyword}" requires asynchronous compilation, but async mode is not enabled.`,
+          );
+        }
+        compiledStatement = await code;
+      } else {
+        compiledStatement = code;
+      }
+
+      if (t.isStatement(compiledStatement)) {
+        statements.push(compiledStatement);
+      } else {
+        throw new Error(
+          `Invalid code generated for keyword "${keyword}": expected a Babel statement, but received ${typeof compiledStatement}.`,
+        );
+      }
+    }
+
+    return statements;
   }
 
   /**
@@ -148,6 +267,8 @@ export class Compiler {
    * @param refStack - A set of references to track during compilation.
    * @param type - The type of schema being compiled, either "keyword" or "boolean".
    * @param keyword - The keyword associated with the schema, if applicable.
+   * @param schemaPath - The path to the schema being compiled, used for error reporting.
+   * @param dataPath - The path to the data being validated, used for error reporting.
    * @param rootSchema - The root schema being compiled.
    * @param options - Compilation options, such as whether to compile asynchronously.
    * @return A CompilationContext object containing the reference stack, root schema, and options.
@@ -156,6 +277,8 @@ export class Compiler {
     refStack: Set<string>,
     type: "keyword" | "boolean",
     keyword: string | undefined,
+    schemaPath: string,
+    dataPath: string,
     rootSchema: JSONSchemaDefinition,
     options: CompileOptions = {},
   ): CompilationContext {
@@ -163,12 +286,19 @@ export class Compiler {
       refStack,
       rootSchema,
       options,
+      schemaPath,
+      dataPath,
+      dataIdentifier: DATA_IDENTIFIER,
+      compiler: this,
       fail: (params) => {
-        if (type === "keyword") {
-          // Generate a failure statement for a keyword schema
-        }
-        // Generate a failure statement for a boolean schema
-        return t.returnStatement(t.booleanLiteral(false));
+        return createFailCall(
+          EXECUTION_CONTEXT_IDENTIFIER,
+          DATA_IDENTIFIER,
+          type === "boolean" ? String(rootSchema) : keyword || "default",
+          dataPath,
+          schemaPath,
+          params,
+        );
       },
     };
   }

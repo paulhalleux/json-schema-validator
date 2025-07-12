@@ -48,28 +48,14 @@ export class Validator {
   }
 
   /**
-   * Compiles a JSON Schema into a validation function.
-   * This method won't allow asynchronous reference resolution.
-   * @param schema - The JSON Schema to compile.
-   * @return A synchronous validation function that can be used to validate data against the schema.
-   */
-  compileSync(schema: JSONSchemaDefinition): ValidationFn {
-    return this._compiler.compile(schema, { async: false });
-  }
-
-  /**
    * Compiles a JSON Schema into a validation function asynchronously.
    * This method allows for asynchronous reference resolution.
    *
    * @param schema - The JSON Schema to compile.
    * @return A promise that resolves to a synchronous validation function that can be used to validate data against the schema.
    */
-  compileAsync(schema: JSONSchemaDefinition): Promise<ValidationFn> {
-    const result = this._compiler.compile(schema, { async: true });
-    if (result instanceof Promise) {
-      return result;
-    }
-    return Promise.resolve(result);
+  async compile(schema: JSONSchemaDefinition): Promise<ValidationFn> {
+    return await this._compiler.compile(schema, { async: true }, "#/", "");
   }
 
   /**
