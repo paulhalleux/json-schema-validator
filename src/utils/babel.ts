@@ -235,3 +235,36 @@ export function createChainedLogicalExpression(
     return t.logicalExpression(operator, acc, expr);
   }, first!);
 }
+
+/**
+ * Chains multiple if statements into a single if statement.
+ *
+ * This function takes an array of if statements and chains them together,
+ * where the consequent of each if statement becomes the test of the next one.
+ *
+ * @param ifStatements - An array of if statements to chain.
+ * @returns A single if statement that represents the chained conditions.
+ */
+export function chainIfStatements(
+  ifStatements: t.IfStatement[],
+): t.IfStatement {
+  if (ifStatements.length < 1) {
+    throw new Error("At least one if statement is required.");
+  }
+
+  const firstIf = ifStatements[0]!;
+  return ifStatements
+    .slice(1)
+    .reduce<t.IfStatement>((acc, currentIf, index, self) => {
+      return t.ifStatement(
+        acc.test,
+        t.blockStatement([acc.consequent]),
+        index === self.length - 1
+          ? t.ifStatement(
+              currentIf.test,
+              t.blockStatement([currentIf.consequent]),
+            )
+          : currentIf,
+      );
+    }, firstIf);
+}

@@ -1,7 +1,10 @@
 import * as t from "@babel/types";
 import type { KeywordValidator } from "../Keyword.ts";
 import type { CompilationContext } from "../Compiler.ts";
-import { createChainedLogicalExpression } from "../../utils/babel.ts";
+import {
+  chainIfStatements,
+  createChainedLogicalExpression,
+} from "../../utils/babel.ts";
 
 /**
  * Creates a typeof check for the given type.
@@ -94,13 +97,34 @@ const createTypeSubSchema = async (
   type: string,
   context: CompilationContext,
 ) => {
-  return await context.compiler.createSchemaStatements(
+  const statements = await context.compiler.createSchemaStatements(
     context.rootSchema,
     context.options,
     context.schemaPath,
     context.dataPath,
     type,
   );
+
+  const [ifStatements, otherStatements] = statements.reduce(
+    (acc, statement) => {
+      if (t.isIfStatement(statement)) {
+        acc[0].push(statement);
+      } else {
+        acc[1].push(statement);
+      }
+      return acc;
+    },
+    [[], []] as [t.Statement[], t.Statement[]],
+  );
+
+  if (
+    ifStatements.length < 2 ||
+    !ifStatements.every((s) => t.isIfStatement(s))
+  ) {
+    return statements;
+  }
+
+  return [chainIfStatements(ifStatements), ...otherStatements];
 };
 
 const createArrayItemTypeCheck = async (
