@@ -24,13 +24,7 @@ export const getTranslatedErrorMessage = (
   params: Record<string, any>,
 ): string => {
   const messages = locales[locale] || locales.en;
-  let message = get<I18nMessages, string>(messages, path) || messages.default;
-
-  for (const [key, value] of Object.entries(
-    Object.assign(params, { keyword }),
-  )) {
-    message = message.replaceAll(`{{${key}}}`, String(value));
-  }
-
-  return message;
+  const messageFactory =
+    get<I18nMessages, string>(messages, path) || messages.default;
+  return messageFactory({ ...params, keyword });
 };

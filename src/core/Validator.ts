@@ -1,170 +1,69 @@
 import type {
-  CustomCoercionHook,
-  JSONSchema,
   JSONSchemaDefinition,
-  RefResolverFn,
-  ValidationContext,
   ValidationError,
   ValidationFn,
+  ValidatorOptions,
 } from "../types";
-import type { Locale } from "../i18n";
-import { type Draft, DraftVersion, getDraft } from "./draft/Draft.ts";
+
+import { DraftVersion, type Draft } from "./Draft.ts";
+import { DraftRegistry } from "./DraftRegistry.ts";
+import { Compiler, type CompilationContext } from "./Compiler.ts";
+import { KeywordRegistry } from "./KeywordRegistry.ts";
+import { FormatRegistry } from "./FormatRegistry.ts";
 import { RefResolver } from "./RefResolver.ts";
-import { KeywordRegistry } from "./keyword/KeywordRegistry.ts";
-import { FormatRegistry } from "./format/FormatRegistry.ts";
-import { Compiler } from "./compiler/Compiler.ts";
-import { ExecutionContext } from "./ExecutionContext.ts";
 
-export type DefaultedValidatorOptions = ReturnType<
-  typeof getOptionsWithDefaults
->;
-export type ValidatorOptions = {
-  /**
-   * The locale to use for error messages.
-   * If not specified, the default locale will be used.
-   * @default en
-   */
-  locale?: Locale;
-
-  /**
-   * The version of the JSON Schema draft to use.
-   * @default DraftVersion.Draft_2020_12
-   * @see {DraftVersion}
-   */
-  draftVersion?: string;
-
-  /**
-   * An optional function to normalize the schema before validation.
-   * This can be used to ensure that the schema conforms to the draft's requirements.
-   */
-  normalizeSchema?: (schema: JSONSchema) => JSONSchema;
-
-  /**
-   * Whether to coerce types during validation.
-   * If true, the validator will attempt to convert data types to match the schema.
-   * @default false
-   */
-  coerceTypes?: boolean;
-
-  /**
-   * An optional custom coercion hook.
-   * It can be used to transform specific data types during validation.
-   */
-  customCoercion?: CustomCoercionHook;
-
-  /**
-   * An optional function to resolve references in the schema.
-   * This function should take a reference string and return the corresponding schema.
-   * Only references not starting with `#` will be resolved using this function.
-   */
-  refResolver?: RefResolverFn;
-
-  /**
-   * An array of keywords that should be disabled during validation.
-   * This can be used to skip certain validations that are not needed.
-   */
-  disabledKeywords?: string[];
-
-  /**
-   * An array of keywords that should be enabled during validation.
-   * If specified, only these keywords will be considered for validation.
-   * `disabledKeywords` will be ignored if `enabledKeywords` is provided.
-   */
-  enabledKeywords?: string[];
-
-  /**
-   * A function to format error messages.
-   * This function takes a ValidationError and a ValidationContext and returns a formatted error message.
-   */
-  formatErrorMessages?: (
-    error: ValidationError,
-    context: ValidationContext,
-  ) => string;
-
-  /**
-   * Policy for handling circular references.
-   * If set to "throw", an error will be thrown when a circular reference is detected.
-   * If set to "ignore", the validator will skip the circular reference.
-   * @default "throw"
-   */
-  circularRefPolicy?: "throw" | "ignore";
-};
-
+/**
+ * The Validator class is responsible for validating JSON Schemas against a specified draft version.
+ * It uses a compiler to compile the schema and a keyword registry to manage keywords.
+ */
 export class Validator {
+  private readonly _options: ValidatorOptions;
   private readonly _draft: Draft;
-  private readonly _options: DefaultedValidatorOptions;
-  private readonly _refResolver: RefResolver;
+  private readonly _compiler: Compiler;
   private readonly _keywordRegistry: KeywordRegistry;
   private readonly _formatRegistry: FormatRegistry;
-  private readonly _compiler: Compiler;
+  private readonly _refResolver: RefResolver;
 
-  constructor(options: ValidatorOptions = {}) {
+  constructor(options: ValidatorOptions) {
     this._options = getOptionsWithDefaults(options);
-    this._draft = getDraft(this._options.draftVersion, this);
-
+    this._draft = DraftRegistry.get(this._options.draftVersion);
     this._refResolver = new RefResolver(this._options.refResolver);
-    this._keywordRegistry = new KeywordRegistry();
+    this._keywordRegistry = new KeywordRegistry(this._draft.getKeywords());
     this._formatRegistry = new FormatRegistry();
     this._compiler = new Compiler(this);
-
-    this.loadDraftKeywords();
   }
 
-  /**
-   * Gets the options used by this validator instance.
-   * The options include locale, draft version, coercion settings, and more.
-   *
-   * @return The option object containing the validator's configuration.
-   */
-  get options(): DefaultedValidatorOptions {
+  get options(): ValidatorOptions {
     return this._options;
   }
 
-  /**
-   * Gets the format registry used by this validator instance.
-   * The format registry contains all registered formats and their validation functions.
-   *
-   * @return The format registry instance.
-   */
-  get formatRegistry(): FormatRegistry {
-    return this._formatRegistry;
-  }
-
-  /**
-   * Gets the keyword registry used by this validator instance.
-   * The keyword registry contains all registered keywords and their validation functions.
-   *
-   * @return The keyword registry instance.
-   */
   get keywordRegistry(): KeywordRegistry {
     return this._keywordRegistry;
   }
 
-  /**
-   * Compiles a JSON Schema into a validation function.
-   *
-   * @param schema - The JSON Schema to compile.
-   * @return A function that validates data against the schema.
-   */
+  get formatRegistry(): FormatRegistry {
+    return this._formatRegistry;
+  }
+
   compile(schema: JSONSchemaDefinition): ValidationFn {
-    return this._compiler.compile(schema);
+    throw new Error("Not implemented: compile method in Validator class");
   }
 
   /**
    * Resolves a reference to a schema.
    *
    * @param ref - The reference string to resolve.
-   * @param context - The validation context, which includes the reference stack and the root schema.
+   * @param compilationContext - The context for compilation, which includes the reference stack.
    * @return A promise that resolves to the corresponding JSONSchema, or undefined if the reference cannot be resolved.
    */
   resolveRef(
     ref: string,
-    context: ValidationContext,
+    compilationContext: CompilationContext,
   ):
     | Promise<JSONSchemaDefinition | undefined>
     | JSONSchemaDefinition
     | undefined {
-    const stack = context.refStack;
+    const stack = compilationContext.refStack;
     if (stack.has(ref)) {
       if (this.options.circularRefPolicy === "throw") {
         throw new Error(`Circular reference detected: ${ref}`);
@@ -175,7 +74,7 @@ export class Validator {
 
     stack.add(ref);
 
-    return this._refResolver.resolveRef(ref, context.rootSchema);
+    return this._refResolver.resolveRef(ref, compilationContext.rootSchema);
   }
 
   /**
@@ -183,47 +82,13 @@ export class Validator {
    * This method uses the formatErrorMessages option if provided, otherwise it returns the default error message.
    *
    * @param error - The ValidationError to format.
-   * @param context - The ValidationContext containing additional information for formatting.
    * @return A formatted error message string.
    */
-  formatErrorMessage(
-    error: ValidationError,
-    context: ValidationContext,
-  ): string {
+  formatErrorMessage(error: ValidationError): string {
     if (this.options.formatErrorMessages) {
-      return this.options.formatErrorMessages(error, context);
+      return this.options.formatErrorMessages(error);
     }
     return error.message;
-  }
-
-  /**
-   * Creates a new ExecutionContext for this validator instance.
-   * The ExecutionContext is used to manage the validation process and store errors.
-   *
-   * @return A new ExecutionContext instance.
-   */
-  createExecutionContext(schema: JSONSchema): ExecutionContext {
-    return new ExecutionContext(schema, this);
-  }
-
-  /**
-   * Registers the keywords supported by the draft version.
-   * This method loads the keywords from the draft and registers them in the keyword registry.
-   */
-  private loadDraftKeywords(): void {
-    const keywords = this._draft.getKeywords();
-    for (const keyword of keywords) {
-      // Check if the keyword should be disabled
-      if (this._options.enabledKeywords) {
-        if (!this._options.enabledKeywords.includes(keyword.keyword)) {
-          continue;
-        }
-      } else if (this._options.disabledKeywords?.includes(keyword.keyword)) {
-        continue;
-      }
-
-      this._keywordRegistry.register(keyword);
-    }
   }
 }
 
@@ -239,8 +104,6 @@ function getOptionsWithDefaults(options: ValidatorOptions = {}) {
     locale: options.locale || "en",
     draftVersion: options.draftVersion || DraftVersion.Draft_2020_12,
     normalizeSchema: options.normalizeSchema,
-    coerceTypes: options.coerceTypes || false,
-    customCoercion: options.customCoercion,
     refResolver: options.refResolver,
     disabledKeywords: options.disabledKeywords,
     enabledKeywords: options.enabledKeywords,

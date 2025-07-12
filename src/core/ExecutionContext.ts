@@ -1,109 +1,58 @@
-import type {
-  JSONSchema,
-  ValidationContext,
-  ValidationError,
-  ValidationResult,
-} from "../types";
-import type { Validator } from "./Validator.ts";
-import { getTranslatedErrorMessage } from "../i18n";
-import get from "lodash-es/get";
+import type { ValidationError, ValidationResult } from "../types";
 
 export class ExecutionContext {
-  private _isScoped = false;
-  private _scopedErrors: ValidationError[] = [];
-
   private readonly _errors: ValidationError[] = [];
-  private readonly _refStack: Set<string> = new Set();
 
-  constructor(
-    private readonly schema: JSONSchema,
-    private readonly validator: Validator,
-  ) {}
+  private _isScoped: boolean;
+  private _scope: ExecutionContext | null = null;
 
-  /**
-   * Get the reference stack.
-   * This property is used to track references during validation.
-   */
-  get refStack(): Set<string> {
-    return this._refStack;
-  }
-
-  /**
-   * Get the errors collected during validation.
-   * This property is used to access validation errors after validation.
-   */
-  get valid(): boolean {
-    const target = this._isScoped ? this._scopedErrors : this._errors;
-    return target.length === 0;
-  }
-
-  /**
-   * Get the data being validated.
-   * This property is used to access the data during validation.
-   */
-  getSchemaAtPath(path: string): JSONSchema | undefined {
-    const cleanedPath = path.replace(/^(#\/|\/)/, "");
-    const pathArray = cleanedPath
-      .split("/")
-      .map((part) => (isNaN(Number(part)) ? part : Number(part)));
-
-    return get(this.schema, pathArray);
-  }
-
-  /**
-   * Add an error to the validation context.
-   * This method is called when a validation error occurs.
-   */
-  addError(
-    keyword: string,
-    params: Record<string, any>,
-    context: ValidationContext,
-  ): void {
-    const error: ValidationError = {
-      keyword,
-      params,
-      dataPath: context.dataPath,
-      schemaPath: context.schemaPath,
-      message: getTranslatedErrorMessage(
-        this.validator.options.locale,
-        context.dataPath,
-        keyword,
-        params,
-      ),
-    };
-
-    error.message = this.validator.formatErrorMessage(error, context);
-
-    const target = this._isScoped ? this._scopedErrors : this._errors;
-    target.push(error);
-  }
-
-  /**
-   * Add multiple errors to the validation context.
-   * This method is used to merge errors from multiple validation steps.
-   */
-  addErrors(errors: ValidationError[]): void {
-    const target = this._isScoped ? this._scopedErrors : this._errors;
-    target.push(...errors);
-  }
-
-  createScope() {
-    if (this._isScoped) {
-      throw new Error("Execution context is already scoped.");
-    }
-    this._isScoped = true;
-    this._scopedErrors = [];
-  }
-
-  closeScope() {
-    if (!this._isScoped) {
-      throw new Error("Execution context is not scoped.");
-    }
+  constructor() {
     this._isScoped = false;
-    this._scopedErrors = [];
   }
 
-  toValidationResult(): ValidationResult {
+  /**
+   * Executes a callback function in a scoped context.
+   * This allows for temporary changes to the execution context, such as enabling or disabling the error collection,
+   * without affecting the global state of the validator.
+   * @param callback
+   */
+  runScoped(callback: () => void): ValidationResult {
+    const context = new ExecutionContext();
+    context._isScoped = true;
+
+    if (this._isScoped) {
+      throw new Error(
+        "Cannot create a scoped context within another scoped context.",
+      );
+    }
+
+    callback();
+    const result = context.toResult();
+    this._scope = null;
+
+    return result;
+  }
+
+  /**
+   * Adds a validation error to the context.
+   * If the context is scoped, the error is added to the scoped errors.
+   * Otherwise, it is added to the global errors.
+   * @param error - The validation error to add.
+   */
+  report(error: ValidationError) {
+    if (this._scope) {
+      this._scope.report(error);
+    } else {
+      this._errors.push(error);
+    }
+  }
+
+  /**
+   * Converts the collected errors into a validation result.
+   * If there are no errors, the result is valid.
+   * @return A ValidationResult object containing the validity status and any errors.
+   */
+  toResult(): ValidationResult {
     return {
       valid: this._errors.length === 0,
       errors: this._errors,

@@ -1,5 +1,9 @@
 import type { JSONSchema, RefResolverFn } from "../types";
 
+/**
+ * The RefResolver class is responsible for resolving JSON Schema references.
+ * It can resolve both local and external references using a provided resolver function.
+ */
 export class RefResolver {
   private readonly resolvedRefs: Map<string, any> = new Map();
 
