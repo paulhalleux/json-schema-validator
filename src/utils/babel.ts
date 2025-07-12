@@ -156,16 +156,11 @@ export function createFailCall(
     t.callExpression(
       t.memberExpression(executionContextIdentifier, t.identifier("report")),
       [
-        t.objectExpression([
-          t.objectProperty(t.identifier("keyword"), t.stringLiteral(keyword)),
-          t.objectProperty(t.identifier("params"), t.valueToNode(params)),
-          t.objectProperty(t.identifier("dataPath"), t.stringLiteral(dataPath)),
-          t.objectProperty(
-            t.identifier("schemaPath"),
-            t.stringLiteral(schemaPath),
-          ),
-          t.objectProperty(t.identifier("data"), dataIdentifier),
-        ]),
+        t.stringLiteral(keyword),
+        t.valueToNode(params),
+        t.stringLiteral(dataPath),
+        t.stringLiteral(schemaPath),
+        dataIdentifier,
       ],
     ),
   );
