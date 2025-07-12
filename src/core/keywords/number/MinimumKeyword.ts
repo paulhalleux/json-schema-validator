@@ -1,9 +1,11 @@
 import * as t from "@babel/types";
-import type { KeywordValidator } from "../Keyword.ts";
-import type { CompilationContext } from "../Compiler.ts";
+import type { KeywordValidator } from "../../Keyword.ts";
+import type { CompilationContext } from "../../Compiler.ts";
 
-export const MinimumKeyword: KeywordValidator = {
-  keyword: "minimum",
+export const MinimumKeyword: (exclusive: boolean) => KeywordValidator = (
+  exclusive,
+) => ({
+  keyword: exclusive ? "exclusiveMinimum" : "minimum",
   applicableTypes: ["number", "integer"],
   code(schemaValue: unknown, context: CompilationContext) {
     if (typeof schemaValue !== "number") {
@@ -12,11 +14,11 @@ export const MinimumKeyword: KeywordValidator = {
 
     return t.ifStatement(
       t.binaryExpression(
-        "<",
+        exclusive ? "<=" : "<",
         context.dataIdentifier,
         t.numericLiteral(schemaValue),
       ),
       context.fail({ minimum: schemaValue }),
     );
   },
-};
+});

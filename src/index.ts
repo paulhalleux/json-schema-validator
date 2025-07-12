@@ -2,8 +2,9 @@ import { Validator } from "./core/Validator.ts";
 
 const validator = new Validator({});
 const validate = await validator.compile({
-  type: "boolean",
+  type: "number",
+  multipleOf: 12,
 });
 
 // console.log(validate.code);
-console.log(validate("true"));
+console.log(validate(24));

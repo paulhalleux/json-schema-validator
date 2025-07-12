@@ -14,4 +14,9 @@ export const en: I18nMessages = {
             .replace(/, ([^,]*)$/, " or $1")
         : `'${type}'`
     }`,
+  minimum: ({ minimum }) => `must be greater than or equal to ${minimum}`,
+  exclusiveMinimum: ({ minimum }) => `must be greater than ${minimum}`,
+  maximum: ({ maximum }) => `must be less than or equal to ${maximum}`,
+  exclusiveMaximum: ({ maximum }) => `must be less than ${maximum}`,
+  multipleOf: ({ multipleOf }) => `must be a multiple of ${multipleOf}`,
 };
