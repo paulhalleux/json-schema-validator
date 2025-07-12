@@ -9,7 +9,9 @@ export const MinimumKeyword: (exclusive: boolean) => KeywordValidator = (
   applicableTypes: ["number", "integer"],
   code(schemaValue: unknown, context: CompilationContext) {
     if (typeof schemaValue !== "number") {
-      throw new Error(`Invalid schema value for 'minimum': ${schemaValue}`);
+      throw new Error(
+        `Invalid schema value for 'minimum': ${typeof schemaValue}`,
+      );
     }
 
     return t.ifStatement(

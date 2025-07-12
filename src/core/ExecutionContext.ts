@@ -16,6 +16,10 @@ export class ExecutionContext {
     private readonly schema: JSONSchemaDefinition,
   ) {}
 
+  get valid(): boolean {
+    return this._errors.length === 0;
+  }
+
   /**
    * Executes a callback function in the context of a specific schema path.
    * This allows for validation against a sub-schema defined at the given path.

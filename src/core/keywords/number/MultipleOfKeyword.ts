@@ -7,7 +7,9 @@ export const MultipleOfKeyword: KeywordValidator = {
   applicableTypes: ["number", "integer"],
   code(schemaValue: unknown, context: CompilationContext) {
     if (typeof schemaValue !== "number") {
-      throw new Error(`Invalid schema value for 'multipleOf': ${schemaValue}`);
+      throw new Error(
+        `Invalid schema value for 'multipleOf': ${typeof schemaValue}`,
+      );
     }
 
     return t.ifStatement(

@@ -55,7 +55,7 @@ export class Validator {
    * @return A promise that resolves to a synchronous validation function that can be used to validate data against the schema.
    */
   async compile(schema: JSONSchemaDefinition): Promise<ValidationFn> {
-    return await this._compiler.compile(schema, { async: true }, "#/", "");
+    return await this._compiler.compile(schema, { async: true });
   }
 
   /**

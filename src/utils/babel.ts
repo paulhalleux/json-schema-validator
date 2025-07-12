@@ -214,7 +214,7 @@ export function createScopedExecution(
  * @param schemaPathIdentifier - The identifier for the schema path.
  * @param callback - The block statement that contains the logic to execute within the scoped context.
  */
-export function createScopedExecutionSubSchema(
+export function createScopedSubSchemaExecution(
   scopeResultIdentifier: t.Identifier,
   executionContextIdentifier: t.Identifier,
   schemaPathIdentifier: t.Identifier,

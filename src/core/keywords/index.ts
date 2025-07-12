@@ -2,7 +2,8 @@
 export { TypeKeyword } from "./TypeKeyword.ts";
 
 // Applicators Keywords
-export { NotKeyword } from "./NotKeyword.ts";
+export { NotKeyword } from "./applicators/NotKeyword.ts";
+export { AllOfKeyword } from "./applicators/AllOfKeyword.ts";
 
 // Number Keywords
 export { MinimumKeyword } from "./number/MinimumKeyword.ts";

@@ -1,10 +1,14 @@
 import { Validator } from "./core/Validator.ts";
 
 const validator = new Validator({});
-const validate = await validator.compile({
-  type: "number",
-  multipleOf: 12,
-});
+const schema = {
+  allOf: [{ type: "number" }, { minimum: 10 }],
+};
+console.time("Compilation Time");
+const validate = await validator.compile(schema);
+console.timeEnd("Compilation Time");
 
-// console.log(validate.code);
-console.log(validate(24));
+console.time("Validation Time");
+const res = validate(8);
+console.timeEnd("Validation Time");
+console.log("Validation Result:", res.valid);

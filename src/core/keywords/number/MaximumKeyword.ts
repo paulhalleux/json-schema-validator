@@ -9,7 +9,9 @@ export const MaximumKeyword: (exclusive: boolean) => KeywordValidator = (
   applicableTypes: ["number", "integer"],
   code(schemaValue: unknown, context: CompilationContext) {
     if (typeof schemaValue !== "number") {
-      throw new Error(`Invalid schema value for 'maximum': ${schemaValue}`);
+      throw new Error(
+        `Invalid schema value for 'maximum': ${typeof schemaValue}`,
+      );
     }
 
     return t.ifStatement(

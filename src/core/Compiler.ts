@@ -99,7 +99,7 @@ export class Compiler {
   async compile(
     schema: JSONSchemaDefinition,
     options: CompileOptions = {},
-    schemaPath: string = "#/",
+    schemaPath: string = "#",
     dataPath: string = "",
   ): Promise<ValidationFn> {
     const validationStatements = await this.createSchemaStatements(
@@ -144,7 +144,7 @@ export class Compiler {
   async createSchemaStatements(
     schema: JSONSchemaDefinition,
     options: CompileOptions = {},
-    schemaPath: string = "#/",
+    schemaPath: string = "#",
     dataPath: string = "",
     type: string | undefined,
   ): Promise<t.Statement[]> {
@@ -189,7 +189,7 @@ export class Compiler {
     refStack: Set<string>,
     schema: JSONSchemaDefinition,
     options: CompileOptions = {},
-    schemaPath: string = "#/",
+    schemaPath: string = "#",
     dataPath: string = "",
     type: string | undefined,
   ) {

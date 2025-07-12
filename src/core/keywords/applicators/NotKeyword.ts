@@ -1,7 +1,7 @@
 import * as t from "@babel/types";
-import type { KeywordValidator } from "../Keyword.ts";
-import type { CompilationContext } from "../Compiler.ts";
-import { createScopedExecution } from "../../utils/babel.ts";
+import type { KeywordValidator } from "../../Keyword.ts";
+import type { CompilationContext } from "../../Compiler.ts";
+import { createScopedExecution } from "../../../utils/babel.ts";
 
 export const NotKeyword: KeywordValidator = {
   keyword: "not",
@@ -11,9 +11,7 @@ export const NotKeyword: KeywordValidator = {
       schemaValue === null ||
       Array.isArray(schemaValue)
     ) {
-      throw new Error(
-        `Invalid schema value for 'not': ${JSON.stringify(schemaValue)}`,
-      );
+      throw new Error(`Invalid schema value for 'not': ${typeof schemaValue}`);
     }
 
     const scopeResult = t.identifier("scopeResult");

@@ -1,6 +1,7 @@
 import { type Draft, DraftVersion } from "../Draft.ts";
 
 import {
+  AllOfKeyword,
   MaximumKeyword,
   MinimumKeyword,
   MultipleOfKeyword,
@@ -17,6 +18,7 @@ export class Draft_2020_12 implements Draft {
 
       // Applicators Keywords
       NotKeyword,
+      AllOfKeyword,
 
       // Number Keywords
       MinimumKeyword(true), // exclusiveMinimum

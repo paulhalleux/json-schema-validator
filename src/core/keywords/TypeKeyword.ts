@@ -148,7 +148,7 @@ export const TypeKeyword: KeywordValidator = {
       (!Array.isArray(schemaValue) || schemaValue.length === 0)
     ) {
       throw new Error(
-        `Invalid schema value for 'type' keyword: ${JSON.stringify(schemaValue)}, must be a string or a non-empty array.`,
+        `Invalid schema value for 'type' keyword: ${typeof schemaValue}, must be a string or a non-empty array.`,
       );
     }
 
@@ -156,7 +156,7 @@ export const TypeKeyword: KeywordValidator = {
       const typeChecks = schemaValue.map((type) => {
         if (typeof type !== "string") {
           throw new Error(
-            `Invalid type in 'type' array: ${JSON.stringify(type)}, must be a string.`,
+            `Invalid type in 'type' array: ${typeof type}, must be a string.`,
           );
         }
         return createTypeCheck(type, context, false);
