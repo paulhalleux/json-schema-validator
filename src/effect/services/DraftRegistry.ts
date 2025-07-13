@@ -1,9 +1,9 @@
 import { Context, Effect, Layer } from "effect";
 
-import type { KeywordValidator } from "../../core/Keyword.ts";
-import type { JSONSchema } from "../../types";
 import { Draft_2020_12 } from "../drafts/Draft_2020_12.ts";
 import { UnsupportedDraftError } from "../errors/UnsupportedDraftError.ts";
+import type { KeywordRegistry } from "./KeywordRegistry.ts";
+import type { JSONSchema } from "../types.ts";
 
 export class DraftRegistry extends Context.Tag("DraftRegistry")<
   DraftRegistry,
@@ -14,10 +14,7 @@ export class DraftRegistry extends Context.Tag("DraftRegistry")<
     Effect.gen(function* () {
       return {
         get(version) {
-          if (
-            !version ||
-            version === DraftRegistry.DraftVersion.Draft_2020_12
-          ) {
+          if (!version || version === DraftVersion.Draft_2020_12) {
             return Effect.succeed(new Draft_2020_12());
           }
           return Effect.fail(new UnsupportedDraftError(version));
@@ -27,20 +24,20 @@ export class DraftRegistry extends Context.Tag("DraftRegistry")<
   );
 }
 
+export enum DraftVersion {
+  Draft_2020_12 = "draft-2020-12",
+  Draft_2019_09 = "draft-2019-09",
+  Draft_07 = "draft-07",
+}
+
 export declare namespace DraftRegistry {
   export interface Proto {
     get(version?: DraftVersion): Effect.Effect<Draft, UnsupportedDraftError>;
   }
 
-  export enum DraftVersion {
-    Draft_2020_12 = "draft-2020-12",
-    Draft_2019_09 = "draft-2019-09",
-    Draft_07 = "draft-07",
-  }
-
   export interface Draft {
     readonly version: DraftVersion;
-    getKeywords(): KeywordValidator[];
+    getKeywords(): KeywordRegistry.KeywordValidator[];
     normalize?(schema: JSONSchema): JSONSchema;
   }
 }

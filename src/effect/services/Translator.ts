@@ -1,6 +1,5 @@
 import { Context, Effect, Layer } from "effect";
 import { type Locale, locales } from "../i18n";
-import { int } from "effect/Schema";
 
 export class Translator extends Context.Tag("Translator")<
   Translator,

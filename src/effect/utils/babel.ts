@@ -1,6 +1,6 @@
 import * as t from "@babel/types";
-import type { ValidationFnFactory } from "../types";
 import type { FunctionExpression } from "@babel/types";
+import type { Compiler } from "../services/Compiler.ts";
 import { generate } from "@babel/generator";
 
 /**
@@ -12,12 +12,12 @@ import { generate } from "@babel/generator";
  * ```
  *
  * @param executionContextIdentifier - The identifier for the execution context variable.
- * @param validatorIdentifier - The identifier for the validator instance.
+ * @param compilerIdentifier - The identifier for the validator instance.
  * @param schemaIdentifier - The identifier for the schema being validated.
  */
 export function createExecutionContextVariable(
   executionContextIdentifier: t.Identifier,
-  validatorIdentifier: t.Identifier,
+  compilerIdentifier: t.Identifier,
   schemaIdentifier: t.Identifier,
 ): t.VariableDeclaration {
   return t.variableDeclaration("const", [
@@ -25,7 +25,7 @@ export function createExecutionContextVariable(
       executionContextIdentifier,
       t.callExpression(
         t.memberExpression(
-          validatorIdentifier,
+          compilerIdentifier,
           t.identifier("createExecutionContext"),
         ),
         [schemaIdentifier],
@@ -73,18 +73,18 @@ export function createResultReturnStatement(
 export function createValidationFunctionFactory(
   factoryIdentifier: t.Identifier,
   executionContextIdentifier: t.Identifier,
-  validatorIdentifier: t.Identifier,
+  compilerIdentifier: t.Identifier,
   schemaIdentifier: t.Identifier,
   dataIdentifier: t.Identifier,
   validationStatement: t.Statement[],
 ) {
   return t.functionExpression(
     factoryIdentifier,
-    [validatorIdentifier, schemaIdentifier],
+    [compilerIdentifier, schemaIdentifier],
     t.blockStatement([
       createExecutionContextVariable(
         executionContextIdentifier,
-        validatorIdentifier,
+        compilerIdentifier,
         schemaIdentifier,
       ),
       t.returnStatement(
@@ -113,7 +113,7 @@ export function createValidationFunctionFactory(
 export function createFactoryFunction(
   factoryIdentifier: t.Identifier,
   factoryFunction: FunctionExpression,
-): ValidationFnFactory {
+): Compiler.ValidationFnFactory {
   const { code } = generate(factoryFunction);
   return Object.assign(
     new Function(

@@ -6,18 +6,13 @@ export class FormatRegistry extends Context.Tag("FormatRegistry")<
   FormatRegistry,
   FormatRegistry.Proto
 >() {
-  static make = (options: FormatRegistry.Options) => {
+  static make = ({ formats: initialFormats = [] }: FormatRegistry.Options) => {
     return Layer.effect(
       FormatRegistry,
       Effect.gen(function* () {
         const formats = yield* Ref.make<
           Map<string, FormatRegistry.FormatValidator>
-        >(new Map());
-
-        // preload initial formats
-        for (const format of options.initialFormats || []) {
-          yield* Ref.update(formats, (map) => map.set(format.name, format));
-        }
+        >(new Map(initialFormats.map((f) => [f.name, f])));
 
         return {
           registerFormat: (validator: FormatRegistry.FormatValidator) => {
@@ -70,7 +65,7 @@ export declare namespace FormatRegistry {
   }
 
   interface Options {
-    initialFormats?: FormatValidator[];
+    formats?: FormatValidator[];
   }
 
   export interface FormatValidator {

@@ -1,8 +1,15 @@
 import { Validator } from "./Validator.ts";
+import { DraftVersion } from "./services/DraftRegistry.ts";
 
-const validator = Validator.make({ locale: "en" });
+console.time("Create Validator");
+const validator = Validator.make({
+  locale: "en",
+  draft: DraftVersion.Draft_2020_12,
+});
+console.timeEnd("Create Validator");
 
-const validate = await validator.compile({
+console.time("Compile Schema");
+const validate = validator.compileSync({
   type: "object",
   properties: {
     name: { type: "string" },
@@ -10,5 +17,6 @@ const validate = await validator.compile({
   },
   required: ["name", "age"],
 });
+console.timeEnd("Compile Schema");
 
 console.log(validate.code);

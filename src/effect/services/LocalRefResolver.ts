@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect";
-import type { JSONSchema, JSONSchemaDefinition } from "../../types";
+import type { JSONSchemaDefinition } from "../types";
 
 export class LocalRefResolver extends Context.Tag("LocalRefResolver")<
   LocalRefResolver,

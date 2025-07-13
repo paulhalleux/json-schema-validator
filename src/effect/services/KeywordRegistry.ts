@@ -1,38 +1,37 @@
 import { Context, Effect, Layer, Ref } from "effect";
-import type { JSONSchemaTypeName } from "../../types";
-import type { CompilationContext } from "../../core/Compiler.ts";
+import type * as t from "@babel/types";
+
 import { KeywordNotRegisteredError } from "../errors/KeywordNotRegisteredError.ts";
 import { KeywordAlreadyRegisteredError } from "../errors/KeywordAlreadyRegisteredError.ts";
-import type * as t from "@babel/types";
 import type { CodeGenerationError } from "../errors/CodeGenerationError.ts";
+
+import type { JSONSchemaTypeName } from "../types.ts";
+import type { Compiler } from "./Compiler.ts";
 
 export class KeywordRegistry extends Context.Tag("KeywordRegistry")<
   KeywordRegistry,
   KeywordRegistry.Proto
 >() {
   static make = ({
-    initialKeywords = [],
+    keywords: initialKeywords = [],
   }: KeywordRegistry.Options = {}): Layer.Layer<KeywordRegistry> =>
     Layer.effect(
       KeywordRegistry,
       Effect.gen(function* () {
         const keywords = yield* Ref.make<
           Map<string, KeywordRegistry.KeywordValidator>
-        >(new Map());
-
-        // preload initial keywords
-        for (const kw of initialKeywords) {
-          yield* Ref.update(keywords, (map) => map.set(kw.keyword, kw));
-        }
+        >(new Map(initialKeywords.map((kw) => [kw.keyword, kw])));
 
         return {
-          registerKeyword: (keyword, validator) => {
+          registerKeyword: (validator) => {
             return Effect.gen(function* () {
               const map = yield* Ref.get(keywords);
-              if (map.has(keyword)) {
+              if (map.has(validator.keyword)) {
                 return yield* Effect.fail(new KeywordAlreadyRegisteredError());
               }
-              yield* Ref.update(keywords, (m) => m.set(keyword, validator));
+              yield* Ref.update(keywords, (m) =>
+                m.set(validator.keyword, validator),
+              );
             });
           },
           getKeyword: (keyword) => {
@@ -62,7 +61,6 @@ export class KeywordRegistry extends Context.Tag("KeywordRegistry")<
 export declare namespace KeywordRegistry {
   interface Proto {
     registerKeyword: (
-      keyword: string,
       validator: KeywordValidator,
     ) => Effect.Effect<void, KeywordAlreadyRegisteredError>;
     getKeyword: (
@@ -76,7 +74,7 @@ export declare namespace KeywordRegistry {
   }
 
   interface Options {
-    initialKeywords?: KeywordValidator[];
+    keywords?: KeywordValidator[];
   }
 
   export interface KeywordValidator {
@@ -84,7 +82,7 @@ export declare namespace KeywordRegistry {
     readonly applicableTypes?: JSONSchemaTypeName[];
     code: (
       schemaValue: unknown,
-      context: CompilationContext,
-    ) => Effect.Effect<CodeGenerationError, t.Statement>;
+      context: Compiler.CompilationContext,
+    ) => Effect.Effect<t.Statement, CodeGenerationError>;
   }
 }

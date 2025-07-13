@@ -1,10 +1,9 @@
 import { Context, Effect, Layer, Ref } from "effect";
 
-import type { JSONSchemaDefinition } from "../../types";
-
 import type { ExternalRefResolutionError } from "../errors/ExternalRefResolutionError.ts";
 import { ExternalRefResolver } from "./ExternalRefResolver.ts";
 import { LocalRefResolver } from "./LocalRefResolver.ts";
+import type { JSONSchemaDefinition } from "../types.ts";
 
 export class RefResolver extends Context.Tag("RefResolver")<
   RefResolver,

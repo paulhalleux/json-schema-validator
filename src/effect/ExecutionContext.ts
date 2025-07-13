@@ -1,12 +1,8 @@
-import type {
-  JSONSchema,
-  JSONSchemaDefinition,
-  ValidationError,
-  ValidationResult,
-} from "../types";
+import type { Compiler } from "./services/Compiler.ts";
+import type { JSONSchema, JSONSchemaDefinition } from "./types.ts";
 
 export class ExecutionContext {
-  private readonly _errors: ValidationError[] = [];
+  private readonly _errors: Compiler.ValidationError[] = [];
   private _scope: ExecutionContext | null = null;
 
   constructor(private readonly schema: JSONSchemaDefinition) {}
@@ -22,7 +18,10 @@ export class ExecutionContext {
    * @param callback - The callback function to execute within the scoped context.
    * @return A ValidationResult object containing the validity status and any errors.
    */
-  runScopedSubSchema(path: string, callback: () => void): ValidationResult {
+  runScopedSubSchema(
+    path: string,
+    callback: () => void,
+  ): Compiler.ValidationResult {
     const schema = this.getSubSchema(path);
     if (!schema) {
       throw new Error(`Schema not found at path: ${path}`);
@@ -43,7 +42,7 @@ export class ExecutionContext {
    * without affecting the global state of the validator.
    * @param callback - The callback function to execute within the scoped context.
    */
-  runScoped(callback: () => void): ValidationResult {
+  runScoped(callback: () => void): Compiler.ValidationResult {
     const previousScope = this._scope;
     this._scope = new ExecutionContext(this.schema);
 
@@ -77,7 +76,7 @@ export class ExecutionContext {
     const schemaValue =
       typeof this.schema === "object" ? this.schema[keyword] : this.schema;
 
-    const error: ValidationError = {
+    const error: Compiler.ValidationError = {
       keyword,
       schemaPath,
       dataPath,
@@ -100,7 +99,7 @@ export class ExecutionContext {
    * If there are no errors, the result is valid.
    * @return A ValidationResult object containing the validity status and any errors.
    */
-  toResult(): ValidationResult {
+  toResult(): Compiler.ValidationResult {
     return {
       valid: this._errors.length === 0,
       errors: this._errors,
