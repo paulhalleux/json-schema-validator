@@ -16,6 +16,7 @@
     "@babel/parser": "^7.28.0",
     "@babel/types": "^7.28.0",
     "dedent": "^1.6.0",
+    "effect": "^3.16.13",
     "lodash-es": "^4.17.21"
   }
 }

@@ -6,7 +6,6 @@ import type { KeywordValidator } from "./Keyword.ts";
  */
 export class KeywordRegistry {
   private _keywords: Map<string, KeywordValidator> = new Map();
-  private _keywordsByType: Map<string, KeywordValidator[]> = new Map();
 
   constructor(initialKeywords: KeywordValidator[] = []) {
     for (const keyword of initialKeywords) {
@@ -25,16 +24,6 @@ export class KeywordRegistry {
     }
 
     this._keywords.set(keyword, validator);
-
-    // Register the keyword by type if applicable
-    if (validator.applicableTypes) {
-      for (const type of validator.applicableTypes) {
-        if (!this._keywordsByType.has(type)) {
-          this._keywordsByType.set(type, []);
-        }
-        this._keywordsByType.get(type)?.push(validator);
-      }
-    }
   }
 
   /**
@@ -47,21 +36,11 @@ export class KeywordRegistry {
   }
 
   /**
-   * Retrieves all keyword validators applicable to a specific type.
-   * @param type - The type for which to retrieve keyword validators.
-   * @returns An array of keyword validators applicable to the specified type.
-   */
-  getKeywordsByType(type: string): KeywordValidator[] {
-    return this._keywordsByType.get(type) || [];
-  }
-
-  /**
    * Clears all registered keywords.
    * This is typically used for testing purposes.
    */
   clear(): void {
     this._keywords.clear();
-    this._keywordsByType.clear();
   }
 
   /**
@@ -83,16 +62,5 @@ export class KeywordRegistry {
     }
 
     this._keywords.delete(keyword);
-
-    // Remove the keyword from applicable types
-    for (const [type, validators] of this._keywordsByType.entries()) {
-      const index = validators.findIndex((v) => v.keyword === keyword);
-      if (index !== -1) {
-        validators.splice(index, 1);
-        if (validators.length === 0) {
-          this._keywordsByType.delete(type);
-        }
-      }
-    }
   }
 }
